@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+java -cp build/main/classes/:libs/Universal-Tokenizer-1.0.jar:libs/JArgParse-1.0.jar Main "$@"

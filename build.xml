@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<project name="My-Forth" default="build">
+    <property name="dir.build.root" value="./build" />
+    <property name="dir.main.src" value="./src/main/java" />
+    <property name="dir.main.bin" value="${dir.build.root}/main/classes" />
+    <property name="dir.main.jar" value="${dir.build.root}/jar" />
+
+    <property name="dir.test.src" value="./src/test/java" />
+    <property name="dir.test.bin" value="${dir.build.root}/test/classes" />
+
+    <property name="product.vendor" value="Dmitriy Meleshko" />
+    <property name="product.version" value="1.0" />
+    <property name="product.name" value="My-Forth" />
+    <tstamp>
+        <format property="build.date" pattern="dd/MMMM/yyyy hh:mm:ss" />
+    </tstamp>
+
+    <target name="build" depends="clear, compile, jars, sources" />
+
+    <target name="clear">
+        <delete dir="${dir.build.root}" />
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${dir.main.bin}" />
+        <mkdir dir="${dir.test.bin}" />
+
+        <javac srcdir="${dir.main.src}" destdir="${dir.main.bin}" debug="true" includeantruntime="yes">
+            <classpath location="./libs/JArgParse-1.0.jar" />
+            <classpath location="./libs/Universal-Tokenizer-1.0.jar" />
+        </javac>
+        <!--<javac srcdir="${dir.test.src}" destdir="${dir.test.bin}" debug="true" includeantruntime="yes">
+            <classpath location="./JUnit/hamcrest-core-1.3.jar" />
+            <classpath location="./JUnit/junit-4.12.jar" />
+            <classpath location="${dir.main.bin}" />
+        </javac>-->
+    </target>
+
+    <target name="jars">
+        <jar destfile="${dir.main.jar}/${product.name}-${product.version}.jar" compress="false" basedir="${dir.main.bin}"
+             encoding="UTF-8">
+            <manifest>
+                <attribute name="Manifest-Version" value="1.0" />
+                <attribute name="Ant-Version" value="${ant.version}" />
+                <attribute name="Built-On" value="${build.date}" />
+                <attribute name="Build-Version" value="${product.version}" />
+                <attribute name="Project-Author" value="${product.vendor}" />
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="sources">
+        <jar destfile="${dir.main.jar}/${product.name}-${product.version}-sources.jar" compress="true"
+             basedir="${dir.main.src}" encoding="UTF-8">
+            <manifest>
+                <attribute name="Manifest-Version" value="1.0" />
+                <attribute name="Ant-Version" value="${ant.version}" />
+                <attribute name="Built-On" value="${build.date}" />
+                <attribute name="Build-Version" value="${product.version}" />
+                <attribute name="Project-Author" value="${product.vendor}" />
+            </manifest>
+        </jar>
+    </target>
+</project>
