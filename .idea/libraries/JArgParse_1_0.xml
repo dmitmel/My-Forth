@@ -5,7 +5,9 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/libs/JArgParse-1.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/JArgParse-1.0-sources.zip!/" />
+      <root url="jar://$PROJECT_DIR$/libs/JArgParse-1.0-sources.zip!/src/main/java" />
+      <root url="jar://$PROJECT_DIR$/libs/JArgParse-1.0-sources.zip!/src/test/java" />
     </SOURCES>
   </library>
 </component>

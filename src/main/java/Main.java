@@ -1,9 +1,10 @@
-import org.jargparse.ArgumentParseException;
-import org.jargparse.ArgumentParser;
-import org.jargparse.argtypes.Positional;
-import org.jargparse.util.IterableUtils;
-import org.jargparse.util.Lists;
-import org.universal.tokenizer.*;
+import github.dmitmel.jargparse.ArgumentParseException;
+import github.dmitmel.jargparse.ArgumentParser;
+import github.dmitmel.jargparse.ParsingResult;
+import github.dmitmel.jargparse.Flag;
+import github.dmitmel.jargparse.Positional;
+import github.dmitmel.jargparse.util.IterableUtils;
+import github.dmitmel.universal.tokenizer.*;
 
 import java.io.*;
 import java.util.*;
@@ -18,10 +19,14 @@ public class Main {
     private boolean stopped = false;
     private Tokenizer tokenizer;
     private StringBuilder allProgram = new StringBuilder(0);
+    private boolean higherDebugMode = false;
+    private Object variable;
+    private List<String> initialStackValues;
 
     private static void delay(long millis) {
         try {
             Thread.sleep(millis);
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -32,21 +37,41 @@ public class Main {
     }
 
     private void main0(String[] args) throws IOException {
-        ArgumentParser argumentParser = new ArgumentParser(APP_NAME, "My Forth language interpreter.", "1.0");
+        ArgumentParser argumentParser = new ArgumentParser(APP_NAME, "My Forth language interpreter.");
+
         argumentParser.addArgument(new Positional("file with program (if not specified - using interactive mode)",
-                "FILE", "file", Positional.Usage.OPTIONAL, "<stdin>"));
+                "FILE",
+                Positional.Usage.OPTIONAL,
+                "<stdin>"));
+        argumentParser.addArgument(new Flag("-hdm",
+                "--higher-debug-mode",
+                "use higher debug mode. For example - print stack traces of underlying Java exceptions",
+                "HIGHER_DEBUG_MODE"));
+        argumentParser.addArgument(new Positional("initial stack values",
+                "INITIAL_STACK_VALUES",
+                Positional.Usage.ZERO_OR_MORE));
 
         try {
-            Map<String, Object> parsedArguments = argumentParser.run(args);
+            ParsingResult parsedArguments = argumentParser.run(args);
 
-            if (parsedArguments.size() > 0) {
+            if (parsedArguments.getBoolean("SHOW_HELP")) {
+                System.out.println(argumentParser.constructHelpMessage());
+                System.exit(0);
+            } else if (parsedArguments.getBoolean("SHOW_VERSION")) {
+                System.out.println("1.0");
+                System.exit(0);
+            } else {
                 tokenizer = new Tokenizer();
                 tokenizer.singleLineCommentSequence = "\\";
                 tokenizer.multilineCommentStart = "(*";
                 tokenizer.multilineCommentEnd = "*)";
 
-                String inputFileString = (String) parsedArguments.get("file");
-                if (parsedArguments.get("file").equals("<stdin>")) {
+                higherDebugMode = parsedArguments.getBoolean("HIGHER_DEBUG_MODE");
+                String inputFileString = parsedArguments.getString("FILE");
+                initialStackValues = parsedArguments.getList("INITIAL_STACK_VALUES");
+                addInitialStackValuesToStack();
+
+                if (parsedArguments.get("FILE").equals("<stdin>")) {
                     startInInteractiveMode();
                 } else {
                     startInFileInterpretationMode(inputFileString);
@@ -54,6 +79,21 @@ public class Main {
             }
         } catch (ArgumentParseException e) {
             System.out.println(argumentParser.parsingExceptionToString(e));
+        }
+    }
+
+    private void addInitialStackValuesToStack() {
+        List<Token> initStackValuesTokens = tokenizer.toTokenList(IterableUtils.join(initialStackValues, " "));
+        for (Token token : initStackValuesTokens) {
+            switch (token.getType()) {
+                case NUMBER:
+                    stack.add(token.getValue());
+                    break;
+
+                case STRING:
+                    stack.add(((StringToken) token).getValueWithoutQuotes());
+                    break;
+            }
         }
     }
 
@@ -67,7 +107,11 @@ public class Main {
             }
         }
         char[] buffer = new char[(int) inputFileObj.length()];
-        new BufferedReader(new FileReader(inputFileObj)).read(buffer);
+        FileReader fileReader = new FileReader(inputFileObj);
+        BufferedReader bufferedReader = new BufferedReader(fileReader);
+        bufferedReader.read(buffer);
+        bufferedReader.close();
+        fileReader.close();
         allProgram.append(buffer);
 
         List<Token> tokens = tokenizer.toTokenList(allProgram.toString());
@@ -80,11 +124,11 @@ public class Main {
         System.out.println("Welcome to My-Forth-Interpreter 1.0 in interactive mode!");
         System.out.printf("%s, Java %s\n", System.getProperty("java.vm.name"),
                 System.getProperty("java.runtime.version"));
-        System.out.printf("on %s %s %s\n\n", System.getProperty("os.name"), System.getProperty("os.arch"),
+        System.out.printf("on %s %s %s\n", System.getProperty("os.name"), System.getProperty("os.arch"),
                 System.getProperty("os.version"));
 
         while (!stopped) {
-            System.out.print(">>> ");
+            System.out.print("\n>>> ");
 
             String line = input.readLine();
             allProgram.append(line).append('\n');
@@ -100,7 +144,8 @@ public class Main {
             interpretTokensWithoutErrorHandling(tokens);
         } catch (Exception e) {
             System.out.println();
-            e.printStackTrace();
+            if (higherDebugMode)
+                e.printStackTrace();
             delay(5);
         }
     }
@@ -148,20 +193,18 @@ public class Main {
                         try {
                             ListIterator<Token> iteratorCopy = tokens.listIterator(iterator.nextIndex());
                             List<Token> ifBody = findTokensBefore(new LiteralToken("else"), iteratorCopy);
-                            List<Token> elseBody = findTokensBefore(new LiteralToken("then"), iterator);
+                            List<Token> elseBody = findTokensBefore(new LiteralToken("then"), iteratorCopy);
 
                             if (lastItem == TRUE)
                                 interpretTokensWithoutErrorHandling(ifBody);
                             else if (lastItem == FALSE)
                                 interpretTokensWithoutErrorHandling(elseBody);
                             else
-                                throw new UnknownBooleanValueException(lastItem);
+                                interpretTokensWithoutErrorHandling(elseBody);
                         } catch (NoSuchElementException e) {
                             List<Token> ifBody = findTokensBefore(new LiteralToken("then"), iterator);
                             if (lastItem == TRUE)
                                 interpretTokensWithoutErrorHandling(ifBody);
-                            else if (lastItem != FALSE)
-                                throw new UnknownBooleanValueException(lastItem);
                         }
 
                     } else if (realString.equals("stack")) {
@@ -195,6 +238,13 @@ public class Main {
 
                     } else if (realString.equals("drop")) {
                         stack.pop();
+
+                    } else if (realString.equals("store_var")) {
+                        variable = stack.pop();
+
+                    } else if (realString.equals("get_var")) {
+                        Objects.requireNonNull(variable);
+                        stack.push(variable);
 
                     } else {
                         List<Token> wordBody = words.get(((String) token.getValue()).toLowerCase());

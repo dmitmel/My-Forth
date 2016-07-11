@@ -5,7 +5,7 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/libs/Universal-Tokenizer-1.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/Universal-Tokenizer-1.0-sources.zip!/" />
     </SOURCES>
   </library>
 </component>

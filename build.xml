@@ -1,65 +1,127 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <project name="My-Forth" default="build">
+    <!-- /////////////////////////////////// VARIABLES DECLARATION /////////////////////////////////// -->
     <property name="dir.build.root" value="./build" />
-    <property name="dir.main.src" value="./src/main/java" />
-    <property name="dir.main.bin" value="${dir.build.root}/main/classes" />
+
+    <property name="dir.src.root" value="./src" />
+    <property name="dir.main.src" value="${dir.src.root}/main/java" />
+    <property name="dir.main.resources" value="${dir.src.root}/main/resources" />
+    <property name="dir.main.gen" value="${dir.src.root}/gen/java" />
+
+    <property name="dir.test.src" value="${dir.src.root}/test/java" />
+    <property name="dir.test.resources" value="${dir.src.root}/test/resources" />
+
+    <property name="dir.main.bin" value="${dir.build.root}/main" />
     <property name="dir.main.jar" value="${dir.build.root}/jar" />
+    <property name="dir.test.bin" value="${dir.build.root}/test" />
 
-    <property name="dir.test.src" value="./src/test/java" />
-    <property name="dir.test.bin" value="${dir.build.root}/test/classes" />
-
-    <property name="product.vendor" value="Dmitriy Meleshko" />
+    <property name="product.author" value="Dmitriy Meleshko" />
     <property name="product.version" value="1.0" />
-    <property name="product.name" value="My-Forth" />
+
     <tstamp>
-        <format property="build.date" pattern="dd/MMMM/yyyy hh:mm:ss" />
+        <!--
+            Getting date in GMT format.
+
+            EEE    abbreviated name of weekday
+            MMM    abbreviated name of month
+            d      day in month number
+            yyyy   4-digit number of year
+            hh     hour, 12-hour format
+            mm     minute
+            ss     second
+            a      PM or AM
+            z      abbreviated name of time-zone.
+        -->
+        <format property="build.date" pattern="EEE, MMM d, yyyy hh:mm:ss a z" />
     </tstamp>
 
-    <target name="build" depends="clear, compile, jars, sources" />
+    <property name="dir.libs" value="./libs" />
 
+    <property name="dir.javadoc" value="./javadoc" />
+    <!-- /////////////////////////////////// END OF VARIABLES DECLARATION /////////////////////////////////// -->
+
+    <target name="build" depends="clear, compile, test:compile, resources, test:resources, jars, sources" />
+
+    <!-- /////////////////////////////////// TARGETS DECLARATION /////////////////////////////////// -->
     <target name="clear">
         <delete dir="${dir.build.root}" />
     </target>
 
     <target name="compile">
         <mkdir dir="${dir.main.bin}" />
+
+        <!-- Option "includeantruntime" is very important - it allows compiling multiple times.
+             Option "includejavaruntime" just adds default JRE-libraries to classpath. -->
+        <javac srcdir="${dir.main.src}" destdir="${dir.main.bin}" debug="true" includeantruntime="true"
+               includejavaruntime="true" encoding="UTF-8">
+            <!-- Add your paths to libraries here. -->
+            <classpath location="${dir.libs}/JArgParse-1.0.jar" />
+            <classpath location="${dir.libs}/Universal-Tokenizer-1.0.jar" />
+
+            <!-- Path to generated sources. -->
+            <sourcepath location="${dir.main.gen}" />
+        </javac>
+    </target>
+
+    <target name="test:compile">
         <mkdir dir="${dir.test.bin}" />
 
-        <javac srcdir="${dir.main.src}" destdir="${dir.main.bin}" debug="true" includeantruntime="yes">
-            <classpath location="./libs/JArgParse-1.0.jar" />
-            <classpath location="./libs/Universal-Tokenizer-1.0.jar" />
-        </javac>
-        <!--<javac srcdir="${dir.test.src}" destdir="${dir.test.bin}" debug="true" includeantruntime="yes">
-            <classpath location="./JUnit/hamcrest-core-1.3.jar" />
-            <classpath location="./JUnit/junit-4.12.jar" />
+        <!-- Option "includeantruntime" is very important - it allows compiling multiple times.
+             Option "includejavaruntime" just adds default JRE-libraries to classpath. -->
+        <javac srcdir="${dir.test.src}" destdir="${dir.test.bin}" debug="true" includeantruntime="true"
+               includejavaruntime="true" encoding="UTF-8">
             <classpath location="${dir.main.bin}" />
-        </javac>-->
+            <!-- Paths to JUnit. -->
+            <classpath location="${dir.libs}/junit-4.12.jar" />
+            <classpath location="${dir.libs}/hamcrest-core-1.3.jar" />
+        </javac>
+    </target>
+
+    <target name="resources">
+        <copy todir="${dir.main.bin}">
+            <fileset dir="${dir.main.resources}" includes="**/*"/>
+        </copy>
+    </target>
+
+    <target name="test:resources">
+        <copy todir="${dir.test.bin}">
+            <fileset dir="${dir.test.resources}" includes="**/*"/>
+        </copy>
     </target>
 
     <target name="jars">
-        <jar destfile="${dir.main.jar}/${product.name}-${product.version}.jar" compress="false" basedir="${dir.main.bin}"
+        <jar destfile="${dir.main.jar}/${ant.project.name}-${product.version}.jar" basedir="${dir.main.bin}"
              encoding="UTF-8">
             <manifest>
                 <attribute name="Manifest-Version" value="1.0" />
+                
+                <!-- Add your custom MANIFEST.MF parameters here. -->
+                <attribute name="Main-Class" value="Main" />
+                
                 <attribute name="Ant-Version" value="${ant.version}" />
                 <attribute name="Built-On" value="${build.date}" />
                 <attribute name="Build-Version" value="${product.version}" />
-                <attribute name="Project-Author" value="${product.vendor}" />
+                <attribute name="Project-Author" value="${product.author}" />
+                <attribute name="Project-Name" value="${ant.project.name}" />
             </manifest>
         </jar>
     </target>
 
     <target name="sources">
-        <jar destfile="${dir.main.jar}/${product.name}-${product.version}-sources.jar" compress="true"
-             basedir="${dir.main.src}" encoding="UTF-8">
-            <manifest>
-                <attribute name="Manifest-Version" value="1.0" />
-                <attribute name="Ant-Version" value="${ant.version}" />
-                <attribute name="Built-On" value="${build.date}" />
-                <attribute name="Build-Version" value="${product.version}" />
-                <attribute name="Project-Author" value="${product.vendor}" />
-            </manifest>
-        </jar>
+        <zip destfile="${dir.main.jar}/${ant.project.name}-${product.version}-sources.zip">
+            <fileset dir="./" includes="src/**/*" />
+        </zip>
     </target>
+
+    <target name="clean-javadoc">
+        <delete dir="${dir.javadoc}" />
+    </target>
+
+    <target name="javadoc" depends="clean-javadoc">
+        <!-- Additional params allow all HTML tags in JavaDoc. -->
+        <javadoc sourcepath="${dir.main.src}" destdir="${dir.javadoc}" access="private"
+                 additionalparam="-Xdoclint:none -splitindex"/>
+    </target>
+    <!-- /////////////////////////////////// END OF TARGETS DECLARATION /////////////////////////////////// -->
 </project>
